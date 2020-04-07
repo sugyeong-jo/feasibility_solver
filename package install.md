@@ -11,6 +11,7 @@
 ```julia
 dev /HDD/sugyeong/github/FP_test.jl
 ```
+- dev 뒤에는 패키지 저장 경로
 - result: 기존 'Juniper' 패키지가 다운받은 패키지로 바뀜
 
 # Step 3. 패키지를 사용하는 .jl실행
