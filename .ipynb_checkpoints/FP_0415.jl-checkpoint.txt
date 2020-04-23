@@ -1,0 +1,304 @@
+using MathOptInterface, JuMP, Cbc
+const MOI = MathOptInterface
+using Cbc
+m = Model(Cbc.Optimizer)
+
+c = [ -1; -2; -5]
+A = [-1  1  3;
+      1  3 -7]
+b = [-5; 10]
+t = Dict(:2=>:Int, :3=>:Bin)
+lb = [0;0;0]
+ub = [10;Inf;Inf]
+index_x = 1:3
+index_constraints = 1:2
+
+@variable(m, x[i in index_x], lower_bound = lb[i], upper_bound=ub[i])
+for i in keys(t)
+    if t[i]==:Bin
+        JuMP.set_binary(x[i])    
+    elseif t[i] == :Int
+        JuMP.set_integer(x[i])
+    end
+end
+@objective(m, Min, sum( c[i]*x[i] for i in index_x) )
+@constraint(m, constraint[j in index_constraints],
+               sum( A[j,i]*x[i] for i in index_x ) <= b[j] )
+
+print(m)
+
+JuMP.optimize!(m)
+
+# Printing the optimal solutions obtained
+println("Optimal Solutions:")
+println("x1 = ", JuMP.value(x[1]))
+println("x2 = ", JuMP.value(x[2]))
+println("x3 = ", JuMP.value(x[3]))
+
+
+#=                     
+               FP
+=#
+
+
+m = Model(Cbc.Optimizer)
+
+c = [ -1; -2; -5]
+A = [-1  1  3;
+      1  3 -7]
+b = [-5; 10]
+lb = [0;0;0]
+ub = [10;Inf;Inf]
+index_x = 1:3
+index_constraints = 1:2
+
+@variable(m, x[i in index_x], lower_bound = lb[i], upper_bound=ub[i])
+
+var=all_variables(m)
+t = Dict(var[2]=>:Int, var[3]=>:Bin)
+
+for i in keys(t)
+    if t[i]==:Bin
+        JuMP.set_binary(x[i])
+        JuMP.set_lower_bound(x[i],0)
+        JuMP.set_upper_bound(x[i],1)    
+    elseif t[i] == :Int
+        JuMP.set_integer(x[i])
+    end
+end
+
+for i in keys(t)
+    if t[i]==:Bin
+        JuMP.unset_binary(i)    
+    elseif t[i] == :Int
+        JuMP.unset_integer(i)
+    end
+end
+
+@objective(m, Min, sum( c[i]*x[i] for i in index_x) )
+@constraint(m, constraint[j in index_constraints],
+               sum( A[j,i]*x[i] for i in index_x ) <= b[j] )
+
+print(m)
+
+JuMP.optimize!(m)
+
+
+solution_k = Dict()
+
+coeff = Dict()
+for i in index_x
+    coeff[var[i]] = c[i]
+end
+
+# Printing the optimal solutions obtained
+println("Optimal Solutions:")
+println("x1 = ", JuMP.value(var[1]))
+println("x2 = ", JuMP.value(var[2]))
+println("x3 = ", JuMP.value(var[3]))
+
+# step 1 Initializations
+```
+solution_val = Array{Float64}(undef, 0)
+for i in index_x
+    push!(solution_val, JuMP.value(x[i]))
+end
+```
+
+solution_k = Dict()
+for i in index_x
+    solution_k[var[i]] = JuMP.value(var[i])
+end
+
+solution_k_1 = Dict()
+# step 2 rounding
+# only for integer
+for i in keys(t)
+    if solution_k[i]!=round(solution_k[i])
+        solution_k_1[i] = round(solution_k[i])
+    end
+end
+
+# step 3 projection
+score = Array{Float64}(undef,0)
+for i in keys(solution_k_1)
+    if solution_k_1[i] == upper_bound(i)
+        push!(score, (upper_bound(i)-solution_k[i]))
+    elseif solution_k_1[i] == lower_bound(i)
+        push!(score, (solution_k[i])-lower_bound(i))
+    else
+        push!(score,abs(solution_k[i]-solution_k_1[i])) 
+    end
+end
+dist=sum(score)
+
+# update
+for i in keys(solution_k_1)
+    if abs(solution_k[i]-solution_k_1[i])<0
+        solution_k[i] = solution_k_1[i]-1
+    else
+        solution_k[i] = solution_k_1[i]+1
+    end
+end
+
+for i in keys(solution_k_1)
+    JuMP.set_lower_bound(i,solution_k_1[i])
+end
+
+print(m)
+optimize!(m)
+println("Optimal Solutions:")
+println("x1 = ", JuMP.value(var[1]))
+println("x2 = ", JuMP.value(var[2]))
+println("x3 = ", JuMP.value(var[3]))
+
+
+# step 4 perturbation 
+T = length(solution_k_1)
+TT = rand(T/2,3T/2)
+sortperm(dist, rev=true )[1:TT]#가장 큰 값을 가지는 순서 index
+
+
+
+
+
+# FP
+using MathOptInterface, JuMP, Cbc
+const MOI = MathOptInterface
+using Cbc
+
+
+m = Model(Cbc.Optimizer)
+
+c = [ -1; -2; -5]
+A = [-1  1  3;
+      1  3 -7]
+b = [-5; 10]
+lb = [0;0;0]
+ub = [10;Inf;Inf]
+index_x = 1:3
+index_constraints = 1:2
+
+@variable(m, x[i in index_x], lower_bound = lb[i], upper_bound=ub[i])
+
+var=all_variables(m)
+t = Dict(var[2]=>:Int, var[3]=>:Bin)
+
+for i in keys(t)
+    if t[i]==:Bin
+        JuMP.set_binary(i)
+        JuMP.set_lower_bound(i,0)
+        JuMP.set_upper_bound(i,1)    
+    elseif t[i] == :Int
+        JuMP.set_integer(i)
+    end
+end
+
+for i in keys(t)
+    if t[i]==:Bin
+        JuMP.unset_binary(i)    
+    elseif t[i] == :Int
+        JuMP.unset_integer(i)
+    end
+end
+
+@objective(m, Min, sum( c[i]*var[i] for i in index_x) )
+@constraint(m, constraint[j in index_constraints],
+               sum( A[j,i]*var[i] for i in index_x ) <= b[j] )
+
+print(m)
+
+# step 1 LP relaxation
+JuMP.optimize!(m)
+### LP솔루션 저장
+solution_k = Dict()
+for i in index_x
+    solution_k[var[i]] = JuMP.value(var[i])
+end
+
+# step 2/3 rounding
+### only for integer
+solution_k_1 = Dict()
+for i in keys(t)
+    if solution_k[i]!=round(solution_k[i])
+        solution_k_1[i] = round(solution_k[i])
+    end
+end
+
+# step 5 
+nIter = nIter+1
+# step 6 projection
+score = Array{Float64}(undef,0)
+for i in keys(solution_k_1)
+    if solution_k_1[i] == upper_bound(i)
+        push!(score, (upper_bound(i)-solution_k[i]))
+    elseif solution_k_1[i] == lower_bound(i)
+        push!(score, (solution_k[i])-lower_bound(i))
+    else
+        push!(score,abs(solution_k[i]-solution_k_1[i])) 
+    end
+end
+dist=sum(score)
+
+if dist == 0
+    break
+end
+
+maxIter = 100
+nIter = 0
+
+# step 4 while
+while dist>0 || nIter > maxIter
+    # step 1 LP relaxation
+    JuMP.optimize!(m)
+    ### LP솔루션 저장
+    solution_k = Dict()
+    for i in index_x
+        solution_k[var[i]] = JuMP.value(var[i])
+    end
+
+    # step 2/3 rounding
+    ### only for integer
+    solution_k_1 = Dict()
+    for i in keys(t)
+        if solution_k[i]!=round(solution_k[i])
+            solution_k_1[i] = round(solution_k[i])
+        end
+    end
+
+    # step 5 
+    nIter = nIter+1
+    # step 6 projection
+    score = Array{Float64}(undef,0)
+    for i in keys(solution_k_1)
+        if solution_k_1[i] == upper_bound(i)
+            push!(score, (upper_bound(i)-solution_k[i]))
+        elseif solution_k_1[i] == lower_bound(i)
+            push!(score, (solution_k[i])-lower_bound(i))
+        else
+            push!(score,abs(solution_k[i]-solution_k_1[i])) 
+        end
+    end
+    dist=sum(score)
+
+
+    # step 7 update
+    for i in keys(solution_k_1)
+        if abs(solution_k[i]-solution_k_1[i])<0
+            solution_k[i] = solution_k_1[i]-1
+        else
+            solution_k[i] = solution_k_1[i]+1
+        end
+    end
+
+    # step 8 update 2
+    for i in keys(solution_k_1)
+        JuMP.set_lower_bound(i,solution_k_1[i])
+    end
+
+    print(m)
+    optimize!(m)
+
+end
+
+sum( coeff[i]*solution_k[i] for i in keys(solution_k))
