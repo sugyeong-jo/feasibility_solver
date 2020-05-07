@@ -259,7 +259,7 @@ for constraint_index in tqdm(infeasible_var_const)
         if const_s_coef[j] >0
             u_new = xlb[const_s_var_index[j]]+(u[constraint_index]-L_min)/const_s_coef[j]
             if upper_bound(var[const_s_var_index[j]]) > u_new
-                println(u_new)
+                #println(u_new)
                 set_upper_bound(var[const_s_var_index[j]],u_new)
             end
         else
@@ -408,3 +408,4 @@ termination_status(m)==MOI.OPTIMAL
 
 
 #####################################################################################################
+# 이제 update해서 infeasible variable 줄어드는 방향으로 업데이트하는 부분 코딩하기
