@@ -256,8 +256,8 @@ while true
         T = 20
 
         # solution_k_1: round 한 결과
-        # solution_k_2: round 한 것 중 상위 몇개만 바꾼 결과
-        solution_k_2 = copy(solution_k_1)
+        # solution_k_2: round 한 것 중 상위 몇개만  원래 솔루션에서 바꾼 결과
+        solution_k_2 = copy(solution_k)
         for i in 1:T
             x_idx=top_score_list[i][1]
             if abs(solution_k[x_idx]-solution_k_1[x_idx])<0
@@ -274,7 +274,7 @@ while true
             end
         end
 
-        
+
 
         score = Array{Float64}(undef,0)
         for i in keys(solution_k_1)
@@ -294,9 +294,9 @@ while true
 
         if dist2 < dist     
             # step 8 update 2
-            for i in keys(solution_k_1)
-                if lower_bound(i)<solution_k_1[i]
-                    JuMP.set_lower_bound(i,solution_k_1[i])
+            for i in keys(solution_k_2)
+                if lower_bound(i)<solution_k_2[i]
+                    JuMP.set_lower_bound(i,solution_k_2[i])
                 end
             end
 

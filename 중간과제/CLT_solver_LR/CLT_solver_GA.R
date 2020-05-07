@@ -1,0 +1,307 @@
+library('GA')
+library('Rglpk')
+library('lpSolve')
+library('Rsymphony')
+library('rcbc')
+library('dplyr')
+library('Matrix')
+library('stringr')
+library('reshape2')
+
+# Step1: Bound reduction 
+# Step2: GA
+
+
+f<-function(x) {
+  x<-Matrix(x,ncol = 1,sparse = T)
+  t(x)%*%Matrix(obj,sparse = T)
+}
+
+fitness<-function(x){
+  S<-const_x_1%*%Matrix(x,sparse = T)
+  const<-cbind(S, const_rhs)
+  penalty<-sum(abs(const[which(const[,1]>const[,2]),][,1]))
+  p<-ifelse(penalty==0, f(x), f(x)+penalty)
+  return(-p)
+}
+
+solution_out<-function(FileName,soltuion){
+  soltuion<-soltuion[order(soltuion$obj.index),]
+  testset<-readLines(FileName)
+  col.start<-which(testset=="COLUMNS")
+  rhs.start<-which(testset=="RHS")
+  col.set<-testset[(col.start+1):(rhs.start-1)]
+  col.set.df<-data.frame(as.character(col.set))
+  test<-str_trim(col.set.df[1:nrow(col.set.df),])
+  
+  if(length(grep("\t",test))==0){
+    variable_0 <- colsplit(test, pattern=" ", names=c(1:3))$`1`
+  }else{variable_0 <- colsplit(test, pattern="\t", names=c(1:3))$`1`}
+  
+  variable<-unique(variable_0[-(grep("MARK",variable_0))])
+  solution<-soltuion$obj.sol
+  
+  
+  sol<-(paste(variable,'^',solution,sep=''))
+  filename<-paste(substr(FileName,1,(nchar(FileName)-3)),'sol',sep = "")
+  write(sol,filename )
+  return(length(variable)==length(solution))
+}
+
+# Step 0: read file
+# Input
+args <- commandArgs(TRUE)
+FileName <- args[1]
+MAXITER= as.numeric(args[2])
+POPSIZE= as.numeric(args[3])
+option = args[4]
+
+x <- Rglpk_read_file( FileName, type = "MPS_free") 
+
+
+if (option == 1){
+  obj <- as.matrix(x$objective)
+  simple_triplet_matrix_sparse <- x$constraints[[1]]
+  mat <- sparseMatrix(i=simple_triplet_matrix_sparse$i, 
+                      j=simple_triplet_matrix_sparse$j, 
+                      x=simple_triplet_matrix_sparse$v,
+                      dims=c(simple_triplet_matrix_sparse$nrow, simple_triplet_matrix_sparse$ncol))
+  dir <- x$constraints[[2]]
+  rhs <- x$constraints[[3]]
+  bound<-x$bounds
+  types<-x$types
+  max <- x$maximum
+  
+  # Step 1: Bound reduction
+  bound<-list()
+  bound$lower$ind<-seq(1,dim(obj)[1])
+  bound$upper$ind<-seq(1,dim(obj)[1])
+  lower_bound<-x$bounds$lower$val
+  upper_bound<-x$bounds$upper$val
+  upper_bound[which(upper_bound==Inf)]<-10000000000
+  
+  reduce_bound<-0.5
+  bound$lower$val<-lower_bound
+  bound$upper$val<-upper_bound
+  
+  types<-rep("C",dim(obj)[1])
+  sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                          rhs=rhs,bound=bound,max=F,time_limit=10)
+  sol.2<-sol 
+  sol$objval
+  sol$status
+  
+  t<-which(upper_bound>10000)
+  for(i in 1:50){
+    i<-i+1
+    if(sol$status==0){ #feasible
+      while (sol$status==0&(length(upper_bound[t])!=0)) {
+        t<-which(upper_bound>10000)
+        upper_bound[t]<-upper_bound[t]*reduce_bound
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=T,time_limit=10) 
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print("feasible")
+      }
+    }else{
+      while(sol$status!=0){
+        upper_bound[t]<-upper_bound[t]*(1+reduce_bound^2)
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=T,time_limit=10)
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print("infeasible")
+      }
+    }
+  }
+  
+  t<-which(upper_bound>1000)
+  for(i in 1:50){
+    i<-i+1
+    if(sol$status==0){ #feasible
+      while (sol$status==0&(length(upper_bound[t])!=0)) {
+        t<-which(upper_bound>1000)
+        upper_bound[t]<-upper_bound[t]*reduce_bound
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=T,time_limit=10)
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print("feasible")
+      }
+    }else{
+      while(sol$status!=0){
+        upper_bound[t]<-upper_bound[t]*(1+reduce_bound^2)
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=F,time_limit=10) 
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print("infeasible")
+      }
+    }
+  }
+  
+  t<-which(upper_bound>100)
+  for(i in 1:50){
+    i<-i+1
+    if(sol$status==0){ #feasible
+      while (sol$status==0&(length(upper_bound[t])!=0)) {
+        t<-which(upper_bound>100)
+        upper_bound[t]<-upper_bound[t]*reduce_bound
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=T,time_limit=10) 
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print('feasible')
+      }
+    }else{
+      while(sol$status!=0){
+        upper_bound[t]<-upper_bound[t]*(1+reduce_bound^2)
+        upper_bound[t]
+        bound$lower$val<-lower_bound
+        bound$upper$val<-upper_bound
+        
+        types<-rep("C",dim(obj)[1])
+        sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                                rhs=rhs,bound=bound,max=F,time_limit=10)
+        sol.2<-sol 
+        sol$objval
+        sol$status
+        print('infeasible')
+      }
+    }
+  }
+  
+  
+  # Step 2: GA
+  #if there is binary, then the bound is fixed
+  binary.position<-which(x$types=="B")
+  integer.position<-which(x$types=="I")
+  
+  #LP relaxation
+  types<-rep("C",dim(obj)[1])
+  sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                          rhs=rhs,bound=bound,max=T,time_limit=10) 
+  sol.2<-sol #lp solve benchmark
+  suggestedSol<-matrix((sol.2$solution),nrow = 1)
+  constraints<-Matrix(mat, sparse=T)
+  lesser<-which(dir=="<=")
+  greater<-which(dir==">=")
+  equal<-which(dir=="==")
+  
+  const_lesser<-constraints[lesser,]
+  const_greater<- (-constraints[greater,])
+  const_equal<- rbind(constraints[equal,],(-constraints[equal,]))
+  
+  const_x_1<-rbind(const_lesser,const_greater,const_equal)
+  const_x_1<-Matrix(const_x_1,sparse = T)
+  #const_x_1<-as(z,"dgCMatrix")
+  const_rhs<-Matrix(c(rhs[lesser],rhs[greater],rhs[equal],rhs[equal]),ncol = 1, sparse = T)
+  
+  
+  GA <- ga(type = "real-valued",
+           selection=ga_tourSelection,
+           crossover =  gareal_laplaceCrossover,
+           mutation = gareal_powMutation,
+           suggestions = suggestedSol,
+           fitness = fitness, lower = bound$lower$val, upper = bound$upper$val,
+           popSize = POPSIZE,
+           elitism = max(1, round(POPSIZE*0.1)),
+           maxiter = MAXITER)
+  
+} else if (option==2){
+  #case 2 (without any bound recustion)
+  obj <- as.matrix(x$objective)
+  simple_triplet_matrix_sparse <-  (x$constraints[[1]])
+  mat <- sparseMatrix(i=simple_triplet_matrix_sparse$i, 
+                      j=simple_triplet_matrix_sparse$j, 
+                      x=simple_triplet_matrix_sparse$v,
+                      dims=c(simple_triplet_matrix_sparse$nrow, simple_triplet_matrix_sparse$ncol))
+  dir <- x$constraints[[2]]
+  rhs <- x$constraints[[3]]
+  bound<-x$bounds
+  types<-x$types
+  max <- x$maximum
+  
+  # Step 1
+  bound<-list()
+  bound$lower$ind<-seq(1,dim(obj)[1])
+  bound$upper$ind<-seq(1,dim(obj)[1])
+  lower_bound<-x$bounds$lower$val
+  upper_bound<-x$bounds$upper$val
+  upper_bound[which(upper_bound==Inf)]<-10000000000
+  bound$lower$val<-lower_bound
+  bound$upper$val<-upper_bound
+  # Step 2: GA
+  #if there is binary, then the bound is fixed
+  binary.position<-which(x$types=="B")
+  integer.position<-which(x$types=="I")
+  
+  #LP relaxation
+  types<-rep("C",dim(obj)[1])
+  sol<-Rsymphony_solve_LP(obj=obj, mat=mat, dir=dir, types = types,
+                          rhs=rhs,bound=bound,max=T,time_limit=10)
+  sol.2<-sol #lp solve benchmark
+  suggestedSol<-matrix((sol.2$solution),nrow = 1)
+  constraints<-Matrix(mat, sparse=T)
+  lesser<-which(dir=="<=")
+  greater<-which(dir==">=")
+  equal<-which(dir=="==")
+  
+  const_lesser<-constraints[lesser,]
+  const_greater<- (-constraints[greater,])
+  const_equal<- rbind(constraints[equal,],(-constraints[equal,]))
+  
+  const_x_1<-rbind(const_lesser,const_greater,const_equal)
+  const_x_1<-Matrix(const_x_1,sparse = T)
+  const_rhs<-Matrix(c(rhs[lesser],rhs[greater],rhs[equal],rhs[equal]),ncol = 1, sparse = T)
+  
+  
+  GA <- ga(type = "real-valued",
+           selection=ga_tourSelection,
+           crossover =  gareal_laplaceCrossover,
+           mutation = gareal_powMutation,
+           suggestions = suggestedSol,
+           fitness = fitness, lower = bound$lower$val, upper = bound$upper$val,
+           popSize = POPSIZE,
+           elitism = base::max(1, round(POPSIZE*0.1)),
+           maxiter = MAXITER)
+} else{print('Please select the option number([1]: Bound reduction GA [2]: Orginal GA)')}
+
+
+print(summary(GA))
+print(sum(GA@solution[1,]*obj))
+obj.index<-seq(1:nrow(obj))
+obj.sol<-as.factor(GA@solution)
+SOLUTION_fin<-data.frame(cbind(obj.index,obj.sol))
+solution_out(FileName, SOLUTION_fin)
