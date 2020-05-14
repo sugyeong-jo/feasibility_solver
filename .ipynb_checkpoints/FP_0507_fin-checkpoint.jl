@@ -8,7 +8,6 @@ const MOI = MathOptInterface
 using Cbc
 using MathProgBase
 using GLPKMathProgInterface
-using Random
 ####################################
 ########  MPS problem read
 ####################################
@@ -105,7 +104,6 @@ for i in tqdm(index_x)
     end
 end
 
-# bound initial 
 for i in tqdm(var)
     JuMP.set_lower_bound(i,xlb_dict[i])
     JuMP.set_upper_bound(i,xub_dict[i])    
@@ -220,7 +218,6 @@ end
 #var_s=A[:,var_index_dict[collect(keys(infeasible_index))[i]],:] # 특정 variable이 속한 모든 constraint
 
 const_list =  Array{Int}(undef,0)
-println("The all constraints including infeasible variables")
 for i in tqdm(keys(infeasible_index))
     #print(i)
     var_s=A[:,var_index_dict[i],:] # 특정 variable이 속한 모든 constraint
@@ -240,7 +237,7 @@ for i in 1:length(infeasible_var_const)
 end
 """
 
-println("constraint propagarion")
+
 for constraint_index in tqdm(infeasible_var_const)
     #print("const:",constraint_index,"|")
     const_s=A[constraint_index,:,:]
@@ -268,7 +265,7 @@ for constraint_index in tqdm(infeasible_var_const)
         else
             u_new = xub[const_s_var_index[j]] + (u[constraint_index]-L_min)/const_s_coef[j]
             if lower_bound(var[const_s_var_index[j]]) < u_new
-                #println(u_new)
+                println(u_new)
                 set_lower_bound(var[const_s_var_index[j]],u_new)
     
             end
@@ -338,6 +335,10 @@ for i in keys(dict_LP_int) #8437개
 
 end
 
+JuMP.optimize!(m)
+termination_status(m)==MOI.OPTIMAL
+
+
 
 # step 2/3 rounding
 # only for integer
@@ -355,8 +356,6 @@ end
 
 
 # step 4 projection
-# score_list: feasible LP의 score list!
-# score_list_1: round 후 score
 score = Array{Float64}(undef,0)
 #score_list = Dict()
 score_list = Any[]
@@ -383,7 +382,7 @@ top_score_list=sort!(score_list, by = x -> abs(x[2]), rev = false)
 dist2 = sum(score)
 
 
-T = 20
+T = 10
 
 solution_k_2 = Dict()
 #copy(solution_k)
@@ -400,7 +399,6 @@ end
 for i in keys(solution_k_2)
     if lower_bound(i)<=solution_k_2[i]<=upper_bound(i)
         JuMP.set_lower_bound(i,solution_k_2[i])
-        JuMP.set_upper_bound(i,solution_k_2[i])
     end
     
 end
@@ -411,229 +409,3 @@ termination_status(m)==MOI.OPTIMAL
 
 #####################################################################################################
 # 이제 update해서 infeasible variable 줄어드는 방향으로 업데이트하는 부분 코딩하기
-
-if termination_status(m)!=MOI.OPTIMAL
-    for i in keys(solution_k)
-        set_lower_bound(i, solution_k[i])        
-        solution_k = Dict() # LP솔루션 저장
-        for i in index_x
-            solution_k[var[i]] = JuMP.value(var[i])
-        end
-
-        # infeasible 한 index dictionary
-        dict_infeasible_index = Dict()
-        for i in keys(bin_type_dict)
-            if solution_k[i] ==  float(0)
-                continue
-            elseif solution_k[i] ==  float(1)
-                continue
-            else 
-                dict_infeasible_index[i] = :Bin
-            end
-        end
-        for i in keys(int_type_dict)
-            if solution_k[i]!=  round(solution_k[i]) 
-                dict_infeasible_index[i] = :Int
-            end
-        end
-        n_infeasible_var= length(keys(dict_infeasible_index)) #n_infeasible_var: infeasible한  개수
-
-
-        # LP로 구해진 integer set
-        dict_LP_int = Dict()
-        solution_k_1 = Dict()
-        for i in keys(type_dict)
-            if solution_k[i]!=round(solution_k[i])
-                solution_k_1[i] = round(solution_k[i])
-            else dict_LP_int[i] = solution_k[i]
-            end
-        end
-    end
-end
-
-solution_k = Dict() # LP솔루션 저장
-for i in index_x
-    solution_k[var[i]] = JuMP.value(var[i])
-end
-
-# infeasible 한 index dictionary
-dict_infeasible_index = Dict()
-for i in keys(bin_type_dict)
-    if solution_k[i] ==  float(0)
-        continue
-    elseif solution_k[i] ==  float(1)
-        continue
-    else 
-        dict_infeasible_index[i] = :Bin
-    end
-end
-for i in keys(int_type_dict)
-    if solution_k[i]!=  round(solution_k[i]) 
-        dict_infeasible_index[i] = :Int
-    end
-end
-n_infeasible_var= length(keys(dict_infeasible_index)) #n_infeasible_var: infeasible한  개수
-
-
-# LP로 구해진 integer set
-dict_LP_int = Dict()
-solution_k_1 = Dict()
-for i in keys(type_dict)
-    if solution_k[i]!=round(solution_k[i])
-        solution_k_1[i] = round(solution_k[i])
-    else dict_LP_int[i] = solution_k[i]
-    end
-end
-# 다시 한 번 확인해보기
-
-# upper bound는 느슨하게 업데이트
-for i in keys(dict_LP_int) #8437개
-    if lower_bound(i)<dict_LP_int[i]
-        JuMP.set_lower_bound(i,dict_LP_int[i])
-    end
-    #if upper_bound(i)>dict_LP_int[i]+0.01
-    #    JuMP.set_upper_bound(i,dict_LP_int[i]+0.01)
-    #end
-
-end
-
-
-# step 2/3 rounding
-# only for integer
-solution_k_1 = Dict()
-for i in keys(bin_type_dict)
-    if solution_k[i]!=round(solution_k[i])
-        solution_k_1[i] = round(solution_k[i])
-    end
-end
-for i in keys(int_type_dict)
-    if solution_k[i]!=round(solution_k[i])
-        solution_k_1[i] = round(solution_k[i])
-    end
-end
-
-
-# step 4 projection
-# score_list: feasible LP의 score list!
-# score_list_1: round 후 score
-score = Array{Float64}(undef,0)
-#score_list = Dict()
-score_list = Any[]
-
-for i in keys(solution_k_1)
-    if solution_k_1[i] == upper_bound(i)
-        val = upper_bound(i)-solution_k[i]
-        push!(score, abs(val) )
-        #score_list[i] =val
-        push!(score_list, (i, abs(val)))
-    elseif solution_k_1[i] == lower_bound(i)
-        val = solution_k[i]-lower_bound(i)
-        push!(score, abs(val))
-        #score_list[i] = val
-        push!(score_list, (i, abs(val)))
-    else
-        val = abs(solution_k[i]-solution_k_1[i])
-        push!(score,val)
-        #score_list[i] = val
-        push!(score_list, (i, abs(val)))
-    end
-end
-top_score_list=sort!(score_list, by = x -> abs(x[2]), rev = false)
-dist_check = sum(score)
-
-T = 10
-
-solution_k_2 = Dict()
-#copy(solution_k)
-for x_idx in rand(keys(dict_infeasible_index), T)
-    if (solution_k[x_idx]-solution_k_1[x_idx])<0
-        solution_k_2[x_idx] = solution_k_1[x_idx]-1
-    else
-        solution_k_2[x_idx] = solution_k_1[x_idx]+1
-    end
-end
-
-# step 8 update
-for i in keys(solution_k_2)
-    if lower_bound(i)<=solution_k_2[i]<=upper_bound(i)
-        JuMP.set_lower_bound(i,solution_k_2[i])
-        JuMP.set_upper_bound(i,solution_k_2[i])
-    end
-    
-end
-
-optimize!(m) # 새로운 LP
-termination_status(m)==MOI.OPTIMAL
-
-solution_k_check = Dict() # LP솔루션 저장
-for i in index_x
-    solution_k_check[var[i]] = JuMP.value(var[i])
-end
-
-# infeasible 한 index dictionary
-
-dict_infeasible_index_check = Dict()
-for i in keys(bin_type_dict)
-    if solution_k_check[i] ==  float(0)
-        continue
-    elseif solution_k_check[i] ==  float(1)
-        continue
-    else 
-        dict_infeasible_index_check[i] = :Bin
-    end
-end
-for i in keys(int_type_dict)
-    if solution_k_check[i]!=  round(solution_k_check[i]) 
-        dict_infeasible_index_check[i] = :Int
-    end
-end
-n_infeasible_var_check= length(keys(dict_infeasible_index_check)) #n_infeasible_var: infeasible한  개수
-
-if n_infeasible_var_check < n_infeasible_var
-
-
-end
-
-
-# step 2/3 rounding
-# only for integer
-solution_k_1_check = Dict()
-for i in keys(bin_type_dict)
-    if solution_k_check[i]!=round(solution_k[i])
-        solution_k_1_check[i] = round(solution_k[i])
-    end
-end
-for i in keys(int_type_dict)
-    if solution_k_check[i]!=round(solution_k_check[i])
-        solution_k_1_check[i] = round(solution_k_check[i])
-    end
-end
-
-
-# step 4 projection
-# score_list: feasible LP의 score list!
-# score_list_1: round 후 score
-score = Array{Float64}(undef,0)
-#score_list = Dict()
-score_list = Any[]
-
-for i in keys(solution_k_1)
-    if solution_k_1[i] == upper_bound(i)
-        val = upper_bound(i)-solution_k[i]
-        push!(score, abs(val) )
-        #score_list[i] =val
-        push!(score_list, (i, abs(val)))
-    elseif solution_k_1[i] == lower_bound(i)
-        val = solution_k[i]-lower_bound(i)
-        push!(score, abs(val))
-        #score_list[i] = val
-        push!(score_list, (i, abs(val)))
-    else
-        val = abs(solution_k[i]-solution_k_1[i])
-        push!(score,val)
-        #score_list[i] = val
-        push!(score_list, (i, abs(val)))
-    end
-end
-top_score_list=sort!(score_list, by = x -> abs(x[2]), rev = false)
-dist_check = sum(score)
