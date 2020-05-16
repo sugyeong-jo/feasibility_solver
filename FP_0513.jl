@@ -142,8 +142,8 @@ end
 
 # step 1 LP relaxation
 
-function LP_solve(m,dict_xlb_k)
-    Initial_bound()
+function LP_solve(m,dict_xlb_k,dict_xub_k)
+    Reupdate(dict_xlb_k, dict_xub_k)
     Update(dict_xlb_k)
     optimize!(m)        
     solution_k = Dict() # LP솔루션 저장
@@ -164,7 +164,7 @@ function LP_solve(m,dict_xlb_k)
     end
     dict_xub_k = Dict() # lower bound dictionary
     for i in var
-        dict_xub_k[i]=lower_bound(i)
+        dict_xub_k[i]=upper_bound(i)
     end
     return solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
 end
@@ -190,7 +190,7 @@ function LP_solve(m)
     end
     dict_xub_k = Dict() # lower bound dictionary
     for i in var
-        dict_xub_k[i]=lower_bound(i)
+        dict_xub_k[i]=upper_bound(i)
     end
     return solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
 end
@@ -223,7 +223,7 @@ end
 # upper bound는 느슨하게 업데이트
 function Update(dict_LP_int)
     for i in keys(dict_LP_int) #8437개
-        if lower_bound(i)<=dict_LP_int[i]
+        if lower_bound(i)+0.01<=dict_LP_int[i]<=upper_bound(i)-0.01
             JuMP.set_lower_bound(i,dict_LP_int[i])
         end
     end
@@ -403,7 +403,6 @@ while true
     end
 end
 
-
 #####
 #LP 최적 해 저장!
 solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best = solution_k,dict_xlb_k,dict_xub_k,  dict_LP_int, solution_k_1
@@ -413,21 +412,29 @@ dict_infeasible_index_Best, n_infeasible_var_Best=dict_infeasible_index, n_infea
 solution_k,dict_xlb_k,dict_xub_k,  dict_LP_int, solution_k_1 = solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
 dict_infeasible_index, n_infeasible_var = dict_infeasible_index_Best, n_infeasible_var_Best
 ####
+"""
+solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m,dict_xlb_k_Best,dict_xub_k_Best)
+dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+Update(dict_LP_int)
+CP(dict_infeasible_index)
+solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m,dict_xlb_k_Best,dict_xub_k_Best)
+dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+
 
 # score 구하기
 dist, top_score_list=Projection(solution_k_1)
 
-T = 5
+T = 100
 x_indx = Array{Any}(undef,0)
 for i in 1:T
     println(i)
     push!(x_indx,top_score_list[i][1]) 
 end
-dict_round_select = Dict()
+dict_round_select = Dict() 
 for i in x_indx
     dict_round_select[i]=solution_k_1[i]
 end
-Update(solution_k_1)
+Update(dict_round_select)
 
 
 x_indx=rand(keys(dict_infeasible_index), T )
@@ -436,6 +443,7 @@ for i in 1:T
     push!(x_indx,top_score_list[i][1]) 
 end
 solution_k_2 = Round_change(x_indx,solution_k_1,solution_k_1)
+Update(solution_k_2)
 
 optimize!(m)
 if termination_status(m)!=MOI.OPTIMAL
@@ -445,3 +453,112 @@ if termination_status(m)!=MOI.OPTIMAL
     CP(dict_infeasible_index)
     break
 end    
+
+solution_k_check, dict_xlb_k_check, dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
+dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
+dist, top_score_list=Projection(solution_k_1_check)
+"""
+N=2
+T = 10
+for i in 1:N
+    global m
+    global solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
+    global solution_k_check,dict_xlb_k_check,dict_xub_k_check, dict_LP_int_check, solution_k_1_check
+    global solution_k_Best, dict_xlb_k_Best, dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+    global dict_infeasible_index, n_infeasible_var
+    global dict_infeasible_index_check, n_infeasible_var_check
+    global dict_infeasible_index_Best, n_infeasible_var_Best
+    global T    
+
+    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m,dict_xlb_k_Best,dict_xub_k_Best)
+    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+    dist, top_score_list=Projection(solution_k_1)
+  
+    
+    x_indx = Array{Any}(undef,0)
+    for i in 1:T
+        push!(x_indx,top_score_list[i][1]) 
+    end
+    dict_round_select = Dict() 
+    for i in x_indx
+        dict_round_select[i]=solution_k_1[i]
+    end
+    Update(dict_round_select)
+#    CP(dict_infeasible_index)
+    
+    solution_k_check, dict_xlb_k_check, dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
+    dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
+    dist, top_score_list=Projection(solution_k_1_check)
+
+    #####
+    #LP 최적 해 저장!
+    if n_infeasible_var_check < n_infeasible_var_Best
+
+        solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best = solution_k_check,dict_xlb_k_check,dict_xub_k_check,  dict_LP_int_check, solution_k_1_check
+        dict_infeasible_index_Best, n_infeasible_var_Best=dict_infeasible_index_check, n_infeasible_var_check
+        #
+
+        solution_k,dict_xlb_k,dict_xub_k,  dict_LP_int, solution_k_1 = solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+        dict_infeasible_index, n_infeasible_var = dict_infeasible_index_Best, n_infeasible_var_Best
+    end
+    global solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
+    global solution_k_check,dict_xlb_k_check,dict_xub_k_check, dict_LP_int_check, solution_k_1_check
+    global solution_k_Best, dict_xlb_k_Best, dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+    global dict_infeasible_index, n_infeasible_var
+    global dict_infeasible_index_check, n_infeasible_var_check
+    global dict_infeasible_index_Best, n_infeasible_var_Best
+    global T    
+    
+end
+
+################################################
+# Random    
+################################################
+N=2
+T = 10
+for i in 1:N
+    global m
+    global solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
+    global solution_k_check,dict_xlb_k_check,dict_xub_k_check, dict_LP_int_check, solution_k_1_check
+    global solution_k_Best, dict_xlb_k_Best, dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+    global dict_infeasible_index, n_infeasible_var
+    global dict_infeasible_index_check, n_infeasible_var_check
+    global dict_infeasible_index_Best, n_infeasible_var_Best
+    global T    
+
+    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m,dict_xlb_k_Best,dict_xub_k_Best)
+    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+    dist, top_score_list=Projection(solution_k_1)
+    CP(dict_infeasible_index)
+  
+    
+    x_indx=rand(keys(dict_infeasible_index), T )
+    solution_k_2 = Round_change(x_indx,solution_k_1,solution_k_1)
+    Update(solution_k_2)
+    
+    
+    solution_k_check, dict_xlb_k_check, dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
+    dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
+    dist, top_score_list=Projection(solution_k_1_check)
+
+    #####
+    #LP 최적 해 저장!
+    if n_infeasible_var_check < n_infeasible_var_Best
+
+        solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best = solution_k_check,dict_xlb_k_check,dict_xub_k_check,  dict_LP_int_check, solution_k_1_check
+        dict_infeasible_index_Best, n_infeasible_var_Best=dict_infeasible_index_check, n_infeasible_var_check
+        #
+
+        solution_k,dict_xlb_k,dict_xub_k,  dict_LP_int, solution_k_1 = solution_k_Best,dict_xlb_k_Best,dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+        dict_infeasible_index, n_infeasible_var = dict_infeasible_index_Best, n_infeasible_var_Best
+    end
+    global solution_k, dict_xlb_k, dict_xub_k, dict_LP_int, solution_k_1
+    global solution_k_check,dict_xlb_k_check,dict_xub_k_check, dict_LP_int_check, solution_k_1_check
+    global solution_k_Best, dict_xlb_k_Best, dict_xub_k_Best, dict_LP_int_Best, solution_k_1_Best
+    global dict_infeasible_index, n_infeasible_var
+    global dict_infeasible_index_check, n_infeasible_var_check
+    global dict_infeasible_index_Best, n_infeasible_var_Best
+    global T    
+    
+end
+        
