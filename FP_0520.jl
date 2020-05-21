@@ -714,12 +714,17 @@ end
     dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
     Reupdate(dict_xlb, dict_xub_k_check)
     Set_Type()
-    optimize!(m)
+    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m,dict_xlb, dict_xub_k_check)
     termination_status(m)!=MOI.OPTIMAL
+
 end
+
+sol_check = Array{Any}(undef,0)
+for x in keys(solution_k)
+    push!(sol_check,dict_xlb[x]<=solution_k[x]<=dict_xub[x])
+end
+findall(x->false, sol_check)
 ##################################################
-
-
 @time begin
     Set_Type()
     optimize!(m)
