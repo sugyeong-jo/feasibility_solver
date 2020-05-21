@@ -156,4 +156,7 @@ sol_check = Array{Any}(undef,0)
 for x in keys(solution_k)
     push!(sol_check,dict_xlb[x]<=solution_k[x]<=dict_xub[x])
 end
-findall(x->false, sol_check)
+println("The result is: ")
+print(termination_status(m)!=MOI.OPTIMAL)
+println("The the number of unsatisfied variable is:")
+print(findall(x->false, sol_check))
