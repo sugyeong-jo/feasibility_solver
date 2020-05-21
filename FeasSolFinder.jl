@@ -18,7 +18,7 @@ println("================문제 생성=================")
 ####################################
 
 m = MathProgBase.LinearQuadraticModel(GLPKSolverMIP())
-println("The file name is: ")
+print("The file name is: ")
 filename = readline()::String
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
 MathProgBase.loadproblem!(m,filepath)
@@ -156,7 +156,9 @@ sol_check = Array{Any}(undef,0)
 for x in keys(solution_k)
     push!(sol_check,dict_xlb[x]<=solution_k[x]<=dict_xub[x])
 end
-println("The result is: ")
+println("")
+print("Is it optimal?: ")
 print(termination_status(m)!=MOI.OPTIMAL)
-println("The the number of unsatisfied variable is:")
+println("")
+print("The the number of unsatisfied variable is:")
 print(findall(x->false, sol_check))
