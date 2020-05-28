@@ -11,6 +11,7 @@ import JuMP
 using MathOptInterface
 using DataFrames
 using CSV
+using ArgParse
 
 include("FeasSolFinder_func.jl")
 
@@ -18,10 +19,32 @@ println("================문제 생성=================")
 ####################################
 ########  MPS problem read
 ####################################
+s = ArgParseSettings()
+s.description = "Finde Feasible Solution"
+s.commands_are_required = true
+s.version = "1.0"
+s.add_version = true
+
+function parse_commandline()
+    s = ArgParseSettings()
+
+    @add_arg_table! s begin
+        "filename"
+            help = "a positional argument"
+            required = true
+    end
+
+    return parse_args(s)
+end
+
+
+parsed_args = parse_commandline()
+filename=string(parsed_args["filename"])
+println("The file name is: $filename ")
 
 m = MathProgBase.LinearQuadraticModel(GLPKSolverMIP())
-print("The file name is: ")
-filename = readline()::String
+
+#filename = readline()::String
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
 
 MathProgBase.loadproblem!(m,filepath)
@@ -188,7 +211,7 @@ end
 check_optimal = termination_status(m)!=MOI.OPTIMAL
 check_bound = length(findall(x->false, sol_check_bound))
 check_type = length(findall(x->false, sol_check_type))
-t_total = t_ProblemLaod+t_run
+t_total = t_problemLaod+t_run
 println("The problem load time is :",t_problemLaod)
 println("The running time is : ", t_run,"s")
 println("The total time is : ", t_total)
@@ -200,7 +223,7 @@ println("    - The the number of unsatisfied type is:", check_type)
 df=DataFrame(
     Name = [filename],
     Total = [t_total],
-    Problem = [t_ProblemLaod],
+    Problem = [t_problemLaod],
     Run = [t_run],
     Optimal = [check_optimal],
     Check_Bound = [check_bound],
