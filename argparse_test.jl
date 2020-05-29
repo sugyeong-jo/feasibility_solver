@@ -14,7 +14,12 @@ end
 
 
 parsed_args = parse_commandline()
-filename=string(parsed_args["filename"])
+println(parsed_args[filename])
 
+println("Parsed args:")
+for (arg,val) in parsed_args
+    println("  $arg  =>  $val")
+    filename = val
+end
 
-
+println(filename)
