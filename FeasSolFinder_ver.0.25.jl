@@ -13,7 +13,7 @@ using DataFrames
 using CSV
 using ArgParse
 
-include("FeasSolFinder_func.jl")
+include("FeasSolFinder_func_ver.0.0.jl")
 
 println("================문제 생성=================")
 ####################################
@@ -32,6 +32,10 @@ function parse_commandline()
         "filename"
             help = "a positional argument"
             required = true
+        "sec"
+            help = "a solving time"
+            arg_type = Int
+            required = true
     end
 
     return parse_args(s)
@@ -40,11 +44,15 @@ end
 
 parsed_args = parse_commandline()
 filename=string(parsed_args["filename"])
+sec=parsed_args["sec"]
 println("The file name is: $filename ")
+println("The limit time of solver is: $sec s")
 
 m = MathProgBase.LinearQuadraticModel(GLPKSolverMIP())
 
-#filename = readline()::String
+
+#filename = "R100701005_2_cplex.mps"
+#sec = 300
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
 
 MathProgBase.loadproblem!(m,filepath)
@@ -66,7 +74,7 @@ t = MathProgBase.getvartype(m)
 ########  MPS problem to model
 ####################################
 val, t_problemLaod, bytes, gctime, memallocs = @timed begin
-    m=Model(optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => 300,"allowableGap "=>70))
+    m=Model(optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => sec,"allowableGap "=>70))
 
     index_x = 1: ncol
     const_x = 1: nrow

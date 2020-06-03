@@ -285,12 +285,13 @@ end
 
 function load_constraints(
     model::CbcModelFormat,
-    src::MOI.ModelLike,
+    src,
     mapping::MOI.Utilities.IndexMap,
     F::Type{<:MOI.AbstractFunction},
     S::Type{<:MOI.AbstractSet}
 )
     for index in MOI.get(src, MOI.ListOfConstraintIndices{F, S}())
+        println(index)
         load_constraint(
             index,
             model,
@@ -452,8 +453,8 @@ end
 function load_objective(
     model::CbcModelFormat,
     mapping::MOI.Utilities.IndexMap,
-    dest::Optimizer,
-    src::MOI.ModelLike,
+    dest,
+    src,
 )
     F = MOI.get(src, MOI.ObjectiveFunctionType())
     if !MOI.supports(dest, MOI.ObjectiveFunction{F}())

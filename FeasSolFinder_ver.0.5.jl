@@ -13,7 +13,7 @@ using DataFrames
 using CSV
 using ArgParse
 
-include("FeasSolFinder_func.jl")
+include("FeasSolFinder_func_ver.0.5.jl")
 
 println("================문제 생성=================")
 ####################################

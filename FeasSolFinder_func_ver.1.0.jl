@@ -9,10 +9,10 @@ using Random
 
 
 function Set_Type()
-    for i in tqdm(keys(dict_IB_type_org))
-        if dict_IB_type_org[i]==:Bin
+    for i in tqdm(keys(dict_IB_type))
+        if dict_IB_type[i]==:Bin
             JuMP.set_binary(i)
-        elseif dict_IB_type_org[i] == :Int
+        elseif dict_IB_type[i] == :Int
             JuMP.set_integer(i)
         else
             continue
@@ -21,10 +21,10 @@ function Set_Type()
 end
 
 function UnSet_Type()
-    for i in tqdm(keys(dict_IB_type_org))
-        if dict_IB_type_org[i]==:Bin
+    for i in tqdm(keys(dict_IB_type))
+        if dict_IB_type[i]==:Bin
             JuMP.unset_binary(i)
-        elseif dict_IB_type_org[i] == :Int
+        elseif dict_IB_type[i] == :Int
             JuMP.unset_integer(i)
         else
             continue
@@ -32,18 +32,16 @@ function UnSet_Type()
     end
 end
 
-
-##############################################
 function Initial_bound()
-    global var_org
-    for i in tqdm(var_org)
-        #println(i)
+    for i in tqdm(var)
         try
-            JuMP.set_lower_bound(i,dict_xlb_org[i])
-            JuMP.set_upper_bound(i,dict_xub_org[i])
+            JuMP.set_lower_bound(i,dict_xlb[i])
+            JuMP.set_upper_bound(i,dict_xub[i])
         catch  end    
     end
 end
+
+##############################################
 
 # upper bound는 느슨하게 업데이트
 function Update(dict_LP_int)

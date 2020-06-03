@@ -116,19 +116,27 @@ end
 
 ####################################
 #test
-model = read_from_file("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
+#filename = "R100701005_2_cplex.mps"
+
+model = read_from_file("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps",  format = MOI.FORMAT_MOF)
 all_variables(model)
+MOI.ConstraintName()
+MOI.get(model,MOI.ListOfConstraintIndices{MOI.SingleVariable, MOI.Integer}())
 optimizer = Cbc.Optimizer()
 set_optimizer(model, optimizer)
-
+MOI.read!("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
 cbc_dest = Cbc.Optimizer()
 dest = Cbc.Optimizer
 src =  model
 typeof(m)
-
+println(model)
+using Clp
 Clp_loadProblem(model)
+model = MathProgBase.LinearQuadraticModel(ClpSolver())
 model = MathProgBase.LinearQuadraticModel(GLPKSolverMIP())
 MathProgBase.loadproblem!(model,"/HDD/Workspace/CLT/mps/processing/CPLEX_file/testMPS_small.mps")
+MathProgBase.loadproblem!(model,"/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
+MOI.Utilities.IndexMap()
 c = MathProgBase.getobj(model)
 A = MathProgBase.getconstrmatrix(model)
 nrow,ncol = size(A)
@@ -137,14 +145,12 @@ xub = MathProgBase.getvarUB(model)
 l = MathProgBase.getconstrLB(model)
 u = MathProgBase.getconstrUB(model)
 t = MathProgBase.getvartype(model)
-
-
+getObjectiveValue(model)
+copy(model)
 column_value(mapping, index::MOI.VariableIndex)
 
 #####################################
 m = read_from_file("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
-
-
 optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => 300,"allowableGap "=>70)
 set_optimizer(m, optimizer)
 var_org = all_variables(m)
@@ -166,7 +172,7 @@ dict_var_fix = Dict()
 dict_bin_type_org = Dict()
 dict_int_type_org = Dict()
 dict_IB_type_org = Dict()
-for x in tqdm(var_org)
+for x in tqdm(keys(var))
     if is_fixed(x) == true
         dict_var_fix[x] = fix_value(x)
     end
@@ -186,8 +192,41 @@ typeof(var_org[1])
 keys(dict_var_fix)
 dict_var_fix[var_org[3]]
 less_than_constraints = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})
+less_than_constraints = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})
+less_than_constraints = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64})
+less_than_constraints[1]
+
+function JuMPContainer(::Type{T}, args...) where T
+    return JuMPArray(Array{T}(undef, length.(args)...), args...)
+end
+function JuMPContainer(::Type{T}, args::UnitRange...) where T
+    if all(first.(args) .== 1)
+        return Array{T}(undef, length.(args)...)
+    else
+        return JuMPArray(Array{T}(undef, length.(args)...), args...)
+    end
+end
+JuMPContainer(less_than_constraints[1],1)
+list_of_constraint_types(m)[1][1]
+
+typeof(less_than_constraints[1]{MathOpt Interface.ScalarAffineFunction{Float64}})
+
+typeof(constraint_object(less_than_constraints[1]).func)
+[constraint_object(less_than_constraints[1]).func]
+name(less_than_constraints[1])
 
 
+
+collect(linear_terms(constraint_object(less_than_constraints[1]).func))[4][2]
+
+
+length(linear_terms(constraint_object(less_than_constraints[1]).func))
+constraint_object(less_than_constraints[1]).func[1]
+for (a,b,c) in less_than_constraints[1]
+    println(a,b,c)
+end
+
+index(less_than_constraints[100])
 # unfix the variable
 for i in tqdm(index_x)
     #println(var_org[i]) 
