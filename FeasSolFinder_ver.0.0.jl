@@ -13,7 +13,7 @@ using DataFrames
 using CSV
 using ArgParse
 
-include("FeasSolFinder_func.jl")
+include("FeasSolFinder_func_ver.0.0.jl")
 
 println("================문제 생성=================")
 ####################################
@@ -44,7 +44,6 @@ println("The file name is: $filename ")
 
 m = MathProgBase.LinearQuadraticModel(GLPKSolverMIP())
 
-#filename = readline()::String
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
 
 MathProgBase.loadproblem!(m,filepath)
