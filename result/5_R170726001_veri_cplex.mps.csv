@@ -1,2 +1,2 @@
-Name,Total,Problem,Run,Optimal,Check_Bound,check_type
-5_R170726001_veri_cplex.mps,33.881208624,14.668990433,19.212218191,true,0,0
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value
+5_R170726001_veri_cplex.mps,44.760528135,13.803596694,30.956931441,true,0,0,83845.93658735394

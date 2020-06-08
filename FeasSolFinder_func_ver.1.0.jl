@@ -37,6 +37,16 @@ function Initial_bound()
     end
 end
 
+function Initial_bound()
+    global var,var_lb, var_ub
+    for i in tqdm(keys(var))
+        try
+            JuMP.set_lower_bound(i,var_lb[i])
+            JuMP.set_upper_bound(i,var_ub[i])
+        catch end    
+    end
+end
+
 
 for i in tqdm(keys(var))
     JuMP.unset_lower_bound(i)

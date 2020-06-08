@@ -32,16 +32,17 @@ print("The file name is: ")
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
 
 MathProgBase.loadproblem!(m,"/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps")
+MathProgBase.loadproblem!(m,"/HDD/Workspace/CLT/mps/processing/CPLEX_file/R100701005_2_cplex.mps")
 #MathProgBase.loadproblem!(m,"/HDD/Workspace/CLT/FP/data/rococoB10-011000.mps")
 
-c = MathProgBase.getobj(m)
-A = MathProgBase.getconstrmatrix(m)
+c_M = MathProgBase.getobj(m)
+A_M = MathProgBase.getconstrmatrix(m)
 nrow,ncol = size(A)
-xlb = MathProgBase.getvarLB(m)
-xub = MathProgBase.getvarUB(m)
-l = MathProgBase.getconstrLB(m)
-u = MathProgBase.getconstrUB(m)
-t = MathProgBase.getvartype(m)
+xlb_M = MathProgBase.getvarLB(m)
+xub_M = MathProgBase.getvarUB(m)
+l_M = MathProgBase.getconstrLB(m)
+u_M = MathProgBase.getconstrUB(m)
+t_M = MathProgBase.getvartype(m)
 
 
 ####################################
@@ -119,6 +120,8 @@ end
 #filename = "R100701005_2_cplex.mps"
 
 model = read_from_file("/HDD/Workspace/CLT/mps/processing/CPLEX_file/4_R170725003_veri_cplex.mps",  format = MOI.FORMAT_MOF)
+model = read_from_file()
+
 all_variables(model)
 MOI.ConstraintName()
 MOI.get(model,MOI.ListOfConstraintIndices{MOI.SingleVariable, MOI.Integer}())

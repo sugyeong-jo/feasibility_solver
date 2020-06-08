@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value
+R100701004_2_cplex.mps,491.911207569,32.34215458,459.569052989,true,0,0,147778.0

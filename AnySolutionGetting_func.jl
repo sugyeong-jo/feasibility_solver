@@ -38,13 +38,22 @@ end
 function Update(dict_LP_int)
     for i in keys(dict_LP_int) #8437개
         try 
-            if lower_bound(i)+0.01 < dict_LP_int[i] < upper_bound(i)-0.01
+            if lower_bound(i) < dict_LP_int[i] < upper_bound(i)-0.01
                 JuMP.set_upper_bound(i,dict_LP_int[i])
             end
         catch end
     end
 end
 
+function Update_LB(dict_LP_int)
+    for i in keys(dict_LP_int) #8437개
+        try 
+            if lower_bound(i) < dict_LP_int[i] < upper_bound(i)-0.01
+                JuMP.set_lower_bound(i,dict_LP_int[i])
+            end
+        catch end
+    end
+end
 
 function LPUpdate(dict_LP_int)
     for i in keys(dict_LP_int) #8437개
@@ -57,6 +66,20 @@ end
 
 
 # bound 재조정
+function Reupdate(dict_xlb_k, dict_xub_k)
+    Initial_bound()
+    for i in keys(dict_xlb_k) 
+        if (dict_xlb_k[i]-0.01)>var_lb[i]
+            set_lower_bound(i,dict_xlb_k[i])
+        else continue 
+        end
+    end
+    for i in keys(dict_xub_k) 
+        set_upper_bound(i,dict_xub_k[i])
+    end
+
+end
+
 function Reupdate(dict_xlb_k, dict_xub_k)
     Initial_bound()
     for i in keys(dict_xlb_k) 
@@ -235,3 +258,58 @@ function CP(dict_infeasible_index)
 end
 
 
+function Result(path, solution_k)    
+    sol_check_bound = Array{Any}(undef,0)
+    sol_check_type = Array{Any}(undef,0)
+    for x in keys(solution_k)
+        push!(sol_check_bound,var_lb[x]<=solution_k[x]<=var_ub[x])
+    end
+
+    for x in [k for (k,v) in var if v==:Bin]
+        if isapprox(solution_k[x], 0, atol=1e-3) ==true
+            continue 
+        elseif isapprox(solution_k[x], 1, atol=1e-3) ==true
+            continue
+        else
+            println(solution_k[x])
+            push!(sol_check_type, (x,solution_k[x], :Bin))
+        end
+    end
+
+
+
+    for x in [k for (k,v) in var if v==:Int]
+        if isapprox(abs(solution_k[x] - round(solution_k[x])), 0, atol=1e-3) ==false  
+            push!(sol_check_type, (x,solution_k[x], :Int))
+        else
+            continue
+        end
+    end
+
+    check_optimal = termination_status(m)!=MOI.OPTIMAL
+    check_bound = length(findall(x->false, sol_check_bound))
+    check_type = length(sol_check_type)
+    obj_value = objective_value(m)
+    t_total = t_problemLaod+t_run
+    println("The problem load time is :",t_problemLaod)
+    println("The running time is : ", t_run,"s")
+    println("The total time is : ", t_total)
+    println("Is it optimal?: ", check_optimal)
+    println("The objective value is :", obj_value )
+    println("The the number of unsatisfied variable is:")
+    println("    - The the number of unsatisfied bound is:",check_bound )
+    println("    - The the number of unsatisfied type is:", check_type)
+    df=DataFrame(
+        Name = [filename],
+        Total = [t_total],
+        Problem = [t_problemLaod],
+        Run = [t_run],
+        Optimal = [check_optimal],
+        Check_Bound = [check_bound],
+        check_type = [check_type],
+        obj_value = [obj_value]
+    )
+
+    CSV.write(path, df) 
+
+end
