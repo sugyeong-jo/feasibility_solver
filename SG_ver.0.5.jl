@@ -9,7 +9,7 @@ using CSV
 using ArgParse
 
 
-include("SG_func_2.jl")
+include("SG_ver.0.5_func_2.jl")
 ##########################
 s = ArgParseSettings()
 s.description = "Find Feasible Solution"
@@ -39,7 +39,7 @@ parsed_args = parse_commandline()
 filename=string(parsed_args["filename"])
 Sec=parsed_args["Sec"]
 
-#filename = string("R100701001_2_cplex.mps")
+#filename = string("R100701005_2_cplex.mps")
 #Sec = 2000
 
 #=
@@ -50,7 +50,7 @@ println("The file name is: $filename ")
 println("The limit time of solver is: $Sec s")
 
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
-
+println(filepath)
 println("========================================")
 val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     m = read_from_file(filepath)
@@ -212,23 +212,18 @@ function SG()
 
     println("================FP & CP=================")
     Initial_bound()
-    try 
+    try
         UnSet_Type()
     catch  end
-    
-    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
-    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
-    println("Number of infeasible variable: $n_infeasible_var.")
-    println("------------upper bound update-----------------")
-    Update_UB(dict_LP_int)
-    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
-    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
-    #println("Number of infeasible variable: $n_infeasible_var.")
-    #println("------------upper bound update-----------------")
-    #Update_UB(dict_LP_int)
-    CP(dict_infeasible_index)
 
-    
+    optimize!(m)
+    #termination_status(m)==MOI.OPTIMAL
+    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
+    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+    Update(dict_LP_int)
+    CP(dict_infeasible_index)
+    #solution_k_check, dict_xlb_k_check,dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
+    #dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
     dict_xlb_k = Dict() # lower bound dictionary
     dict_xub_k = Dict() # lower bound dictionary
     for i in keys(var)
@@ -236,33 +231,34 @@ function SG()
         dict_xub_k[i] = upper_bound(i)
     end
     dict_xub_k_check = dict_xub_k
-    #solution_k_check, dict_xlb_k_check,dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
-    #dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check) 
-    println("Number of infeasible variable: $n_infeasible_var.")
+
     println("================MILP CBC=================")
     Set_Type()
     try
-        solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m, var_lb, dict_xub_k_check) 
+        solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m, var_lb, dict_xub_k_check)
         return solution_k
 
-    catch  ex 
+    catch  ex
         println(ex)
         println("________________________Update Lower bound________________________")
         Initial_bound()
-        try 
+        try
             UnSet_Type()
         catch  end
-        
+
+        #optimize!(m)
+        #termination_status(m)==MOI.OPTIMAL
         solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
         dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
         Update_LB(dict_LP_int)
         CP(dict_infeasible_index)
+        
         solution_k_check, dict_xlb_k_check,dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
-        dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check) 
-     
+        dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check)
+
         println("================MILP CBC=================")
         Set_Type()
-        solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m, var_lb, dict_xub_k_check) 
+        solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m, var_lb, dict_xub_k_check)
         return solution_k
 
     end

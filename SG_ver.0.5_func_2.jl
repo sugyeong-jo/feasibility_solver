@@ -35,7 +35,7 @@ end
 
 ################################
 # upper bound는 느슨하게 업데이트
-function Update_UB(dict_LP_int)
+function Update(dict_LP_int)
     for i in keys(dict_LP_int) #8437개
         try 
             if lower_bound(i) < dict_LP_int[i] < upper_bound(i)-0.01
@@ -208,7 +208,7 @@ end
 
 function CP(dict_infeasible_index)
     const_list =  Array{Int}(undef,0)
-    println("------------Constraint Propagation-----------------")
+    println("The all constraints including infeasible variables")
     for i in keys(dict_infeasible_index)
         var_s=A[:,var_idx[i],:] # 특정 variable이 속한 모든 constraint
         var_s_n=1:var_s.colptr[2]-1 # 속해 있는 constraint 개수
@@ -245,12 +245,11 @@ function CP(dict_infeasible_index)
                     set_upper_bound(idx_var[const_s_var_index[j]],u_new)
                 end
             else
-                u_new = var_ub[idx_var[const_s_var_index[j]]] + (u[constraint_index]-L_min)/const_s_coef[j]
-                if lower_bound(idx_var[const_s_var_index[j]]) < u_new
-                    set_lower_bound(idx_var[const_s_var_index[j]],u_new)
-                #continue
-        
-                end
+                #u_new = var_ub[idx_var[const_s_var_index[j]]] + (u[constraint_index]-L_min)/const_s_coef[j]
+                #if lower_bound(idx_var[const_s_var_index[j]]) < u_new
+                #    set_lower_bound(idx_var[const_s_var_index[j]],u_new)        
+                #end
+                continue
             end
         end
      end

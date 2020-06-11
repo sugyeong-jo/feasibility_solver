@@ -28,6 +28,10 @@ function parse_commandline()
             help = "a solving time"
             arg_type = Int
             required = true
+        "MaxSol"
+            help = "MaxSolution"
+            arg_type = Int
+            required = true
     end
 
     return parse_args(s)
@@ -38,6 +42,11 @@ println("================MPS load=================")
 parsed_args = parse_commandline()
 filename=string(parsed_args["filename"])
 Sec=parsed_args["Sec"]
+if parsed_args["MaxSol"] ==1
+    MaxSol = 1
+else 
+    MaxSol = 2147483647
+end
 
 #filename = string("R100701001_2_cplex.mps")
 #Sec = 2000
@@ -48,13 +57,14 @@ Sec=parsed_args["Sec"]
 
 println("The file name is: $filename ")
 println("The limit time of solver is: $Sec s")
+println("The max solution is: $MaxSol ")
 
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
 
 println("========================================")
 val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     m = read_from_file(filepath)
-    optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => Sec ,"allowableGap "=>70)
+    optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => MaxSol, "logLevel "=>1, "seconds" => Sec ,"allowableGap "=>70)
     set_optimizer(m, optimizer)
 
     # constraint
@@ -66,7 +76,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Equal To constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.EqualTo{Float64})
-    for i in (1:length(constraint))
+    for i in tqdm(1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.value
         con[con_name]= :Equal
@@ -76,7 +86,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Greater Than constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.GreaterThan{Float64})
-    for i in (1:length(constraint))
+    for i in tqdm(1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.lower
         con[con_name]= :Greater
@@ -86,7 +96,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Less Than constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.LessThan{Float64})
-    for i in (1:length(constraint))
+    for i in tqdm(1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.upper
         con[con_name]= :Less
@@ -103,7 +113,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     var_ub = Dict()
     var_ref = Dict()
     println("All variable load")
-    for var_name in (all_variables(m))
+    for var_name in tqdm(all_variables(m))
         var[var_name] = :Con
         var_idx[var_name] = var_name.index.value
         idx_var[var_name.index.value] = var_name
@@ -114,7 +124,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Interval variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.Interval{Float64})
-    for i in (1:length(variable))
+    for i in tqdm(1:length(variable))
         var_name = constraint_object(variable[i]).func
         var_lb[var_name] = constraint_object(variable[i]).set.lower
         var_ub[var_name] = constraint_object(variable[i]).set.upper
@@ -123,7 +133,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Equal To variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.EqualTo{Float64})
-    for i in (1:length(variable))
+    for i in tqdm(1:length(variable))
         var_name = constraint_object(variable[i]).func
         var_lb[var_name] = constraint_object(variable[i]).set.value
         var_ub[var_name] = constraint_object(variable[i]).set.value
@@ -132,14 +142,14 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Integer variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.Integer)
-    for i in (1:length(variable))
+    for i in tqdm(1:length(variable))
         var_name = constraint_object(variable[i]).func
         var[var_name] = :Int
     end
 
     println("Binary variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.ZeroOne)
-    for i in (1:length(variable))
+    for i in tqdm(1:length(variable))
         var_name = constraint_object(variable[i]).func
         var[var_name] = :Bin
         var_lb[var_name] = 0
@@ -156,7 +166,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
 
     con_set = [k for (k,v) in con if v==:Less]
-    for i in (con_set)
+    for i in tqdm(con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = con_rhs[i]
         l[con_idx[i]] = -Inf
@@ -168,7 +178,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     end
 
     con_set = [k for (k,v) in con if v==:Greater]
-    for i in (con_set)
+    for i in tqdm(con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = -(con_rhs[i])
         l[con_idx[i]] = -Inf
@@ -180,7 +190,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
         end
     end
     con_set = [k for (k,v) in con if v==:Equal]
-    for i in (con_set)
+    for i in tqdm(con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = con_rhs[i]
         l[con_idx[i]] = con_rhs[i]
@@ -216,29 +226,21 @@ function SG()
         UnSet_Type()
     catch  end
     
+    optimize!(m)
+    termination_status(m)==MOI.OPTIMAL
     solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
     dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
-    println("Number of infeasible variable: $n_infeasible_var.")
-    println("------------upper bound update-----------------")
-    Update_UB(dict_LP_int)
+    Update(dict_LP_int)
     solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
     dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
-    #println("Number of infeasible variable: $n_infeasible_var.")
-    #println("------------upper bound update-----------------")
-    #Update_UB(dict_LP_int)
+    Update(dict_LP_int) 
+    solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
+    dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
+    Update(dict_LP_int)    
     CP(dict_infeasible_index)
-
-    
-    dict_xlb_k = Dict() # lower bound dictionary
-    dict_xub_k = Dict() # lower bound dictionary
-    for i in keys(var)
-        dict_xlb_k[i] = lower_bound(i)
-        dict_xub_k[i] = upper_bound(i)
-    end
-    dict_xub_k_check = dict_xub_k
-    #solution_k_check, dict_xlb_k_check,dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
-    #dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check) 
-    println("Number of infeasible variable: $n_infeasible_var.")
+    solution_k_check, dict_xlb_k_check,dict_xub_k_check,dict_LP_int_check, solution_k_1_check=LP_solve(m)
+    dict_infeasible_index_check, n_infeasible_var_check=Infeasible_Check(solution_k_check) 
+ 
     println("================MILP CBC=================")
     Set_Type()
     try
@@ -253,6 +255,8 @@ function SG()
             UnSet_Type()
         catch  end
         
+        optimize!(m)
+        termination_status(m)==MOI.OPTIMAL
         solution_k, dict_xlb_k,dict_xub_k, dict_LP_int, solution_k_1=LP_solve(m)
         dict_infeasible_index, n_infeasible_var=Infeasible_Check(solution_k)
         Update_LB(dict_LP_int)
