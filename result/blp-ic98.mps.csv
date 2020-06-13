@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value
+blp-ic98.mps,30.705991048,13.504679393,17.201311655,SOLUTION_LIMIT,0,0,7043.1064

@@ -7,7 +7,7 @@ using SparseArrays
 using DataFrames
 using CSV
 using ArgParse
-
+using QPSReader
 
 include("SG_func_2.jl")
 ##########################
@@ -28,10 +28,6 @@ function parse_commandline()
             help = "a solving time"
             arg_type = Int
             required = true
-        "MaxSol"
-            help = "MaxSolution"
-            arg_type = Int
-            required = true
     end
 
     return parse_args(s)
@@ -42,11 +38,7 @@ println("================MPS load=================")
 parsed_args = parse_commandline()
 filename=string(parsed_args["filename"])
 Sec=parsed_args["Sec"]
-if parsed_args["MaxSol"] ==1
-    MaxSol = 1
-else 
-    MaxSol = 2147483647
-end
+
 
 #filename = string("R100701001_2_cplex.mps")
 #Sec = 2000
@@ -60,11 +52,25 @@ println("The limit time of solver is: $Sec s")
 println("The max solution is: $MaxSol ")
 
 filepath = string("/HDD/Workspace/CLT/mps/processing/CPLEX_file/",filename)
+val, t_problemLaod, bytes, gctime, memallocs = @timed begin
+    qps = readqps(filepath)
+    qps.varnames
+    qps.varindices
+    qps.connames
+    qps.contypes
+    qps.conindices
+    qps.uvar
+    qps.lvar
+    qps.ucon
+    qps.lcon
+    A = sparse(qps.arows, qps.acols, qps.avals, qps.ncon, qps.nvar)
+end
 
 println("========================================")
 val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     m = read_from_file(filepath)
-    optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => MaxSol, "logLevel "=>1, "seconds" => Sec ,"allowableGap "=>70)
+
+    optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => Sec ,"allowableGap "=>70)
     set_optimizer(m, optimizer)
 
     # constraint
@@ -76,7 +82,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Equal To constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.EqualTo{Float64})
-    for i in tqdm(1:length(constraint))
+    for i in (1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.value
         con[con_name]= :Equal
@@ -86,7 +92,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Greater Than constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.GreaterThan{Float64})
-    for i in tqdm(1:length(constraint))
+    for i in (1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.lower
         con[con_name]= :Greater
@@ -96,7 +102,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Less Than constraints load")
     constraint = all_constraints(m, GenericAffExpr{Float64,VariableRef}, MathOptInterface.LessThan{Float64})
-    for i in tqdm(1:length(constraint))
+    for i in (1:length(constraint))
         con_name = name(constraint[i])
         con_rhs[con_name] = constraint_object(constraint[i]).set.upper
         con[con_name]= :Less
@@ -113,7 +119,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     var_ub = Dict()
     var_ref = Dict()
     println("All variable load")
-    for var_name in tqdm(all_variables(m))
+    for var_name in (all_variables(m))
         var[var_name] = :Con
         var_idx[var_name] = var_name.index.value
         idx_var[var_name.index.value] = var_name
@@ -124,7 +130,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Interval variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.Interval{Float64})
-    for i in tqdm(1:length(variable))
+    for i in (1:length(variable))
         var_name = constraint_object(variable[i]).func
         var_lb[var_name] = constraint_object(variable[i]).set.lower
         var_ub[var_name] = constraint_object(variable[i]).set.upper
@@ -133,7 +139,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Equal To variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.EqualTo{Float64})
-    for i in tqdm(1:length(variable))
+    for i in (1:length(variable))
         var_name = constraint_object(variable[i]).func
         var_lb[var_name] = constraint_object(variable[i]).set.value
         var_ub[var_name] = constraint_object(variable[i]).set.value
@@ -142,14 +148,14 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
     println("Integer variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.Integer)
-    for i in tqdm(1:length(variable))
+    for i in (1:length(variable))
         var_name = constraint_object(variable[i]).func
         var[var_name] = :Int
     end
 
     println("Binary variables load")
     variable = all_constraints(m, VariableRef, MathOptInterface.ZeroOne)
-    for i in tqdm(1:length(variable))
+    for i in (1:length(variable))
         var_name = constraint_object(variable[i]).func
         var[var_name] = :Bin
         var_lb[var_name] = 0
@@ -166,7 +172,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
 
 
     con_set = [k for (k,v) in con if v==:Less]
-    for i in tqdm(con_set)
+    for i in (con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = con_rhs[i]
         l[con_idx[i]] = -Inf
@@ -178,7 +184,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     end
 
     con_set = [k for (k,v) in con if v==:Greater]
-    for i in tqdm(con_set)
+    for i in (con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = -(con_rhs[i])
         l[con_idx[i]] = -Inf
@@ -190,7 +196,7 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
         end
     end
     con_set = [k for (k,v) in con if v==:Equal]
-    for i in tqdm(con_set)
+    for i in (con_set)
         con_term =collect(linear_terms(constraint_object(constraint_by_name(m, i )).func))
         u[con_idx[i]] = con_rhs[i]
         l[con_idx[i]] = con_rhs[i]

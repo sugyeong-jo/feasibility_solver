@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value
+atlanta-ip.mps,512.585556022,12.841269332,499.74428669,SOLUTION_LIMIT,null,null,110.00997174095998
