@@ -382,7 +382,11 @@ function Result(path, solution_k, nIter)
     check_optimal = "FP 1.0"
     check_bound = length(findall(x->false, sol_check_bound))
     check_type = length(sol_check_type)
-    obj_value = objective_value(m)
+    if check_type != 0
+        obj_value = "null"
+    else
+        obj_value = objective_value(m)
+    end
     t_total = t_problemLaod+t_run
     println("The problem load time is : $t_problemLaod")
     println("The running time is : $t_run s")

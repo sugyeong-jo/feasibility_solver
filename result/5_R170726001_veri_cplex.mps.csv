@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value
+5_R170726001_veri_cplex.mps,44.888556488999996,12.883725236,32.004831253,SOLUTION_LIMIT,0,0,83845.93658735394

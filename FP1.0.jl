@@ -127,7 +127,7 @@ function FP1(T, maxIter, P)
 end
 
 val, t_run, bytes, gctime, memallocs = @timed begin
-    solution_k, nIter = FP1(1000, 60, 30)
+    solution_k, nIter = FP1(50, 20, 5)
 end
 
 ###############################################################################################################################################################

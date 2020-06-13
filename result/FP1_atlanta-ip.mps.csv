@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value,nIter
+atlanta-ip.mps,939.867863974,3.917512878,935.950351096,FP 1.0,0,1426,null,1500

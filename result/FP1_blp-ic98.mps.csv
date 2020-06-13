@@ -1,0 +1,2 @@
+Name,Total,Problem,Run,Optimal,Check_Bound,check_type,obj_value,nIter
+blp-ar98.mps,117.864432763,3.458928385,114.405504378,FP 1.0,0,53,null,755
