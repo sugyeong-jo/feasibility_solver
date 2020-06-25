@@ -239,6 +239,8 @@ val, t_problemLaod, bytes, gctime, memallocs = @timed begin
     lb, ub, itg, l, u, A, m, var_name, con_idx, idx_con, var_idx_qps, var, var_idx, idx_var, var_lb, var_ub, qps_var, qps = MPS_read_FP(filepath, Sec) 
 end
 
+typeof(var_name[1])
+
 ################################################################
 ## LP relaxation
 ################################################################

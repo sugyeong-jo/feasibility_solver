@@ -119,7 +119,7 @@ function LP_solve(m)
     println("-----LP solver")
     optimize!(m)        
     solution_k = Dict() # LP솔루션 저장
-    for i in keys(var)
+    for i in all_variables(m)
         solution_k[i] = JuMP.value(i)
     end   
     dict_LP_int = Dict()     # LP로 구해진 integer set
@@ -141,6 +141,8 @@ function LP_solve(m)
         else dict_LP_int[i] = solution_k[i]
         end
     end
+
+    global var
  
     dict_xlb_k = Dict() # lower bound dictionary
     dict_xub_k = Dict() # lower bound dictionary
@@ -441,11 +443,11 @@ end
 function BoundStrength(constraint_index)
     global A
 
-    println("bound strengthening")
+    #println("bound strengthening")
     const_s=A[constraint_index,:,:]
     n_var = const_s.colptr[2]-1
     const_s_n=1:n_var # 속해 있는 variable 개수
-    println("The number of strengthening variables: $n_var ")
+    #println("The number of strengthening variables: $n_var ")
     const_s_coef=const_s.nzval[const_s_n,]#특정 constraint에 해당하는 coefficient
     const_s_var_index=const_s.rowval[const_s_n]#특정 constraint에 해당하는 variable index
     L_min=  Array{Float64}(undef,0)
@@ -461,7 +463,7 @@ function BoundStrength(constraint_index)
 
     for j in const_s_n
         if const_s_coef[j] >= 0
-            u_new = lb[const_s_var_index[j]] + (u[constraint_index]-L_min)/const_s_coef[j]
+            u_new = var_lb[idx_var[const_s_var_index[j]]] + (u[constraint_index]-L_min)/const_s_coef[j]
             if upper_bound(idx_var[const_s_var_index[j]]) >  u_new
                 set_upper_bound(idx_var[const_s_var_index[j]],u_new)
             end
@@ -475,9 +477,9 @@ function BoundStrength(constraint_index)
     end
 end
 
-#BoundStrength(1281)
+##########################################################################################################################
 
-
+##########################################################################################################################
 function Round_FP2()
     idx_int_bin = deepcopy(vcat([k for (k,v) in var if v==:Int],  [k for (k,v) in var if v==:Bin]))
     
