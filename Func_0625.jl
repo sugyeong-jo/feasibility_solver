@@ -9,12 +9,15 @@ using Random
 
 using SparseArrays
 using ArgParse
-#using QPSReader
+using QPSReader
 
 function MPS_read_full(filepath, Sec)
     m = read_from_file(filepath)
     optimizer=optimizer_with_attributes(Cbc.Optimizer,  "maxSolutions" => 1, "logLevel "=>1, "seconds" => Sec ,"allowableGap "=>70)
     set_optimizer(m, optimizer)
+    
+    
+    
 
     # constraint
     list_of_constraint_types(m)
@@ -186,7 +189,31 @@ function MPS_read_full(filepath, Sec)
 
     Initial_bound()
 
-    return m, con_idx, idx_con, A, l, u, var, var_idx, idx_var, var_lb, var_ub
+
+    qps = readqps(filepath)
+    var_qps = Dict()
+    for i in keys(var)
+        var_qps[i] = string(i)
+    end
+
+    Coeff = Dict()
+    for i in 1:length(var)
+        Coeff[qps.varnames[i]] = qps.c[i]
+    end
+
+    c = Array{Float64}(undef,0)
+    for i in 1:length(var)
+        push!(c,Coeff[var_qps[idx_var[i]]])
+    end
+
+
+    x = all_variables(m)
+    ub = upper_bound.(x)
+    lb = lower_bound.(x)
+    itg_idx = is_binary.(x)+is_integer.(x)
+
+
+    return m, con_idx, idx_con, A, l, u, var, var_idx, idx_var, var_lb, var_ub, c,itg_idx
 
 end
 
@@ -345,3 +372,5 @@ function BoundStrength(constraint_index)
         end
     end
 end
+
+

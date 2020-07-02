@@ -484,7 +484,7 @@ function Round_FP2()
     idx_int_bin = deepcopy(vcat([k for (k,v) in var if v==:Int],  [k for (k,v) in var if v==:Bin]))
     
 end
-
+"""
 function Propagate(D)
     Q =
     R =
@@ -493,6 +493,7 @@ function Propagate(D)
         D = 
     end
 end
+"""
 ###################################################################################################################################################
 function Result(path, solution_k, nIter)    
     sol_check_bound = Array{Any}(undef,0)
